@@ -1,0 +1,49 @@
+
+name: Project Issues Tracker
+
+on:
+  issues:
+    types: [opened, reopened, closed]
+
+permissions:
+  issues: write
+
+jobs:
+  track-issues:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Update issue labels
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue_number = context.issue.number;
+            const event = context.payload.action;
+
+            if (event === 'opened' || event === 'reopened') {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number,
+                labels: ['todo']
+              });
+            }
+
+            if (event === 'closed') {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number,
+                name: 'todo'
+              }).catch(error => {
+                if (error.status !== 404) throw error;
+              });
+
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number,
+                labels: ['completed']
+              });
+            }
